@@ -1,0 +1,806 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RiftSage AI Agent - Complete Infrastructure with Auto-Shutdown'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Deployment environment
+
+  RiotAPIKey:
+    Type: String
+    NoEcho: true
+    Description: Riot Games Developer API Key
+
+  ProjectName:
+    Type: String
+    Default: riftsage
+    Description: Project name for resource naming
+
+  AutoShutdownEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Enable automatic resource shutdown when idle
+
+  IdleThresholdMinutes:
+    Type: Number
+    Default: 60
+    Description: Minutes of inactivity before auto-shutdown triggers
+
+Resources:
+  # ====================================
+  # KMS Encryption Key
+  # ====================================
+  DataEncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for RiftSage data encryption
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow Lambda to use the key
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:DescribeKey'
+            Resource: '*'
+
+  DataEncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${ProjectName}-${Environment}'
+      TargetKeyId: !Ref DataEncryptionKey
+
+  # ====================================
+  # S3 Buckets
+  # ====================================
+  RawMatchDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-data-${Environment}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 90
+                StorageClass: INTELLIGENT_TIERING
+              - TransitionInDays: 365
+                StorageClass: GLACIER_INSTANT_RETRIEVAL
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !Ref DataEncryptionKey
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-reports-${Environment}-${AWS::AccountId}'
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, HEAD]
+            AllowedOrigins:
+              - 'https://chronicle.riftsage.gg'
+              - !If [IsDevelopment, 'http://localhost:3000', !Ref 'AWS::NoValue']
+            MaxAge: 3600
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !Ref DataEncryptionKey
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  ModelsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-models-${Environment}-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ====================================
+  # DynamoDB Tables
+  # ====================================
+  PlayersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-Players-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: player_puuid
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_puuid
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref DataEncryptionKey
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  MetricsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-Metrics-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: player_puuid
+          AttributeType: S
+        - AttributeName: year
+          AttributeType: N
+      KeySchema:
+        - AttributeName: player_puuid
+          KeyType: HASH
+        - AttributeName: year
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref DataEncryptionKey
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  GeneratedInsightsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-Insights-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: player_puuid
+          AttributeType: S
+        - AttributeName: section_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_puuid
+          KeyType: HASH
+        - AttributeName: section_id
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  MatchCacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-MatchCache-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: match_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: match_id
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  ChampionRecommendationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-ChampionRecs-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: champion_name
+          AttributeType: S
+        - AttributeName: role
+          AttributeType: S
+      KeySchema:
+        - AttributeName: champion_name
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: RoleIndex
+          KeySchema:
+            - AttributeName: role
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  RateLimitTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-RateLimit-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: user_action
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_action
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  ResourceStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${ProjectName}-ResourceState-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: resource_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: resource_id
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ====================================
+  # Secrets Manager
+  # ====================================
+  RiotAPIKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '/${ProjectName}/${Environment}/riot-api-key'
+      Description: Riot Games Developer API Key
+      SecretString: !Sub '{"api_key":"${RiotAPIKey}"}'
+      KmsKeyId: !Ref DataEncryptionKey
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ====================================
+  # IAM Roles
+  # ====================================
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-LambdaExecution-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:DeleteObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - !Sub '${RawMatchDataBucket.Arn}/*'
+                  - !Sub '${ReportsBucket.Arn}/*'
+                  - !Sub '${ModelsBucket.Arn}/*'
+                  - !GetAtt RawMatchDataBucket.Arn
+                  - !GetAtt ReportsBucket.Arn
+                  - !GetAtt ModelsBucket.Arn
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:DeleteItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                Resource:
+                  - !GetAtt PlayersTable.Arn
+                  - !Sub '${PlayersTable.Arn}/index/*'
+                  - !GetAtt MetricsTable.Arn
+                  - !GetAtt GeneratedInsightsTable.Arn
+                  - !GetAtt MatchCacheTable.Arn
+                  - !GetAtt ChampionRecommendationsTable.Arn
+                  - !GetAtt RateLimitTable.Arn
+                  - !GetAtt ResourceStateTable.Arn
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Ref RiotAPIKeySecret
+        - PolicyName: KMSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:DescribeKey'
+                Resource: !GetAtt DataEncryptionKey.Arn
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'bedrock:InvokeModel'
+                Resource: 'arn:aws:bedrock:*::foundation-model/anthropic.claude-*'
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-*'
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ====================================
+  # Lambda Functions
+  # ====================================
+  DataCollectionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-DataCollection-${Environment}'
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - Deploy actual code'}
+      MemorySize: 512
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          DATA_BUCKET: !Ref RawMatchDataBucket
+          PLAYERS_TABLE: !Ref PlayersTable
+          CACHE_TABLE: !Ref MatchCacheTable
+          RIOT_API_SECRET: !Ref RiotAPIKeySecret
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  FeatureEngineeringFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-FeatureEngineering-${Environment}'
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - Deploy actual code'}
+      MemorySize: 1024
+      Timeout: 600
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          DATA_BUCKET: !Ref RawMatchDataBucket
+          METRICS_TABLE: !Ref MetricsTable
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  ModelInferenceFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-ModelInference-${Environment}'
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - Deploy actual code'}
+      MemorySize: 2048
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          MODELS_BUCKET: !Ref ModelsBucket
+          METRICS_TABLE: !Ref MetricsTable
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  BedrockGenerationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-BedrockGeneration-${Environment}'
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - Deploy actual code'}
+      MemorySize: 1024
+      Timeout: 900
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          METRICS_TABLE: !Ref MetricsTable
+          INSIGHTS_TABLE: !Ref GeneratedInsightsTable
+          REPORTS_BUCKET: !Ref ReportsBucket
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  ReportCompilationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-ReportCompilation-${Environment}'
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - Deploy actual code'}
+      MemorySize: 1024
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          INSIGHTS_TABLE: !Ref GeneratedInsightsTable
+          REPORTS_BUCKET: !Ref ReportsBucket
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  ResourceManagerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-ResourceManager-${Environment}'
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Resource manager placeholder'}
+      MemorySize: 256
+      Timeout: 60
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          RESOURCE_STATE_TABLE: !Ref ResourceStateTable
+          AUTO_SHUTDOWN_ENABLED: !Ref AutoShutdownEnabled
+          IDLE_THRESHOLD_MINUTES: !Ref IdleThresholdMinutes
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ====================================
+  # API Gateway
+  # ====================================
+  RiftSageAPI:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${ProjectName}-api-${Environment}'
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - 'https://chronicle.riftsage.gg'
+          - !If [IsDevelopment, 'http://localhost:3000', !Ref 'AWS::NoValue']
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - '*'
+        MaxAge: 3600
+      Tags:
+        Environment: !Ref Environment
+
+  RiftSageAPIStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref RiftSageAPI
+      StageName: !Ref Environment
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 100
+        ThrottlingRateLimit: 50
+      Tags:
+        Environment: !Ref Environment
+
+  # ====================================
+  # Cognito User Pool
+  # ====================================
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-users-${Environment}'
+      AutoVerifiedAttributes:
+        - email
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: false
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      UsernameConfiguration:
+        CaseSensitive: false
+      UserPoolTags:
+        Environment: !Ref Environment
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ProjectName}-client-${Environment}'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      TokenValidityUnits:
+        RefreshToken: days
+      RefreshTokenValidity: 30
+
+  # ====================================
+  # CloudWatch Log Groups
+  # ====================================
+  DataCollectionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${DataCollectionFunction}'
+      RetentionInDays: 30
+
+  FeatureEngineeringLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FeatureEngineeringFunction}'
+      RetentionInDays: 30
+
+  ModelInferenceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ModelInferenceFunction}'
+      RetentionInDays: 30
+
+  BedrockGenerationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${BedrockGenerationFunction}'
+      RetentionInDays: 30
+
+  ReportCompilationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ReportCompilationFunction}'
+      RetentionInDays: 30
+
+  ResourceManagerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ResourceManagerFunction}'
+      RetentionInDays: 30
+
+  # ====================================
+  # CloudWatch Alarms
+  # ====================================
+  HighErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-HighErrorRate-${Environment}'
+      AlarmDescription: Alert when error rate exceeds threshold
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  SlowGenerationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-SlowGeneration-${Environment}'
+      AlarmDescription: Alert when generation time exceeds 5 minutes
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 300000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref BedrockGenerationFunction
+
+  # ====================================
+  # EventBridge Rules
+  # ====================================
+  AnnualModelTrainingRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-AnnualTraining-${Environment}'
+      Description: Trigger annual model training in January
+      ScheduleExpression: 'cron(0 2 15 1 ? *)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ModelInferenceFunction.Arn
+          Id: ModelTrainingTarget
+          Input: '{"action": "train_models"}'
+
+  ResourceMonitoringRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-ResourceMonitoring-${Environment}'
+      Description: Monitor resources every 15 minutes for auto-shutdown
+      ScheduleExpression: 'rate(15 minutes)'
+      State: !If [AutoShutdownEnabledCondition, 'ENABLED', 'DISABLED']
+      Targets:
+        - Arn: !GetAtt ResourceManagerFunction.Arn
+          Id: ResourceMonitorTarget
+          Input: '{"action": "monitor_and_manage"}'
+
+  ResourceMonitorPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ResourceManagerFunction
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ResourceMonitoringRule.Arn
+
+  # ====================================
+  # SNS Topics
+  # ====================================
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ProjectName}-alerts-${Environment}'
+      DisplayName: RiftSage Alerts
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+# ====================================
+# Conditions
+# ====================================
+Conditions:
+  IsDevelopment: !Equals [!Ref Environment, 'development']
+  AutoShutdownEnabledCondition: !Equals [!Ref AutoShutdownEnabled, 'true']
+
+# ====================================
+# Outputs
+# ====================================
+Outputs:
+  APIEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${RiftSageAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${ProjectName}-api-endpoint-${Environment}'
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub '${ProjectName}-user-pool-${Environment}'
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${ProjectName}-user-pool-client-${Environment}'
+
+  DataBucket:
+    Description: S3 bucket for raw match data
+    Value: !Ref RawMatchDataBucket
+    Export:
+      Name: !Sub '${ProjectName}-data-bucket-${Environment}'
+
+  ReportsBucket:
+    Description: S3 bucket for generated reports
+    Value: !Ref ReportsBucket
+    Export:
+      Name: !Sub '${ProjectName}-reports-bucket-${Environment}'
+
+  PlayersTableName:
+    Description: DynamoDB Players table name
+    Value: !Ref PlayersTable
+    Export:
+      Name: !Sub '${ProjectName}-players-table-${Environment}'
