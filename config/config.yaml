@@ -1,0 +1,114 @@
+# RiftSage AI Agent - Configuration
+
+project:
+  name: riftsage
+  version: 1.0.0
+  description: AI-powered League of Legends performance analytics
+
+environments:
+  development:
+    aws_region: us-east-1
+    log_level: DEBUG
+    auto_shutdown_enabled: true
+    idle_threshold_minutes: 30
+
+  staging:
+    aws_region: us-east-1
+    log_level: INFO
+    auto_shutdown_enabled: true
+    idle_threshold_minutes: 45
+
+  production:
+    aws_region: us-east-1
+    log_level: INFO
+    auto_shutdown_enabled: true
+    idle_threshold_minutes: 60
+
+# Riot API Configuration
+riot_api:
+  rate_limits:
+    requests_per_second: 20
+    requests_per_two_minutes: 100
+  supported_regions:
+    - na1
+    - euw1
+    - eun1
+    - kr
+    - br1
+    - jp1
+    - la1
+    - la2
+    - tr1
+    - ru
+  queue_types:
+    ranked_solo: 420
+    ranked_flex: 440
+    normal_draft: 400
+
+# Bedrock Configuration
+bedrock:
+  model_id: anthropic.claude-3-sonnet-20240229-v1:0
+  max_tokens: 4000
+  temperature: 0.3
+  fallback_model: anthropic.claude-3-haiku-20240307-v1:0
+
+# ML Models
+ml_models:
+  performance_pattern_analyzer:
+    algorithm: kmeans
+    n_clusters: 3
+
+  mental_resilience_calculator:
+    algorithm: random_forest
+    n_estimators: 100
+
+  growth_trajectory_analyzer:
+    algorithm: lstm
+    sequence_length: 30
+
+  playstyle_profiler:
+    algorithm: pca_kmeans
+    n_components: 4
+
+# Metrics Configuration
+metrics:
+  minimum_games_required: 50
+  benchmark_percentiles:
+    - 25
+    - 50
+    - 75
+    - 90
+    - 95
+
+# Report Sections
+report_sections:
+  core:
+    - role_performance
+    - improvement_blueprint
+    - mental_resilience
+    - champion_mastery
+
+  conditional:
+    year_over_year:
+      required_previous_games: 50
+    multi_role:
+      required_games_per_role: 25
+    comeback_specialist:
+      required_comeback_wins: 15
+
+# Cost Management
+cost_management:
+  target_cost_per_report: 0.13
+  bedrock_token_limit: 10000
+  lambda_memory_optimization: true
+
+# Caching
+caching:
+  match_data_ttl_hours: 24
+  rate_limit_ttl_seconds: 120
+
+# Security
+security:
+  encryption_at_rest: true
+  encryption_in_transit: true
+  data_retention_days: 730  # 2 years
