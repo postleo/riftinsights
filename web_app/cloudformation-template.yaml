@@ -1,0 +1,210 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Summoner''s Chronicle - Web App Infrastructure (Cognito, S3, CloudFront)'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Deployment environment
+
+  ProjectName:
+    Type: String
+    Default: summoners-chronicle
+    Description: Project name for resource naming
+
+  WebAppBucket:
+    Type: String
+    Description: S3 bucket name for web app hosting
+
+Resources:
+  # ====================================
+  # Cognito User Pool
+  # ====================================
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-users-${Environment}'
+      AutoVerifiedAttributes:
+        - email
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+        - Name: summoner_name
+          AttributeDataType: String
+          Mutable: true
+        - Name: summoner_puuid
+          AttributeDataType: String
+          Mutable: true
+        - Name: region
+          AttributeDataType: String
+          Mutable: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: false
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      UserAttributeUpdateSettings:
+        AttributesRequireVerificationBeforeUpdate:
+          - email
+
+  # Cognito User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ProjectName}-client-${Environment}'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      RefreshTokenValidity: 30
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      TokenValidityUnits:
+        RefreshToken: days
+        AccessToken: hours
+        IdToken: hours
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_CUSTOM_AUTH
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+      CallbackURLs:
+        - !Sub 'http://${WebAppBucket}.s3-website-${AWS::Region}.amazonaws.com'
+        - http://localhost:3000
+      LogoutURLs:
+        - !Sub 'http://${WebAppBucket}.s3-website-${AWS::Region}.amazonaws.com'
+        - http://localhost:3000
+      SupportedIdentityProviders:
+        - COGNITO
+
+  # Cognito User Pool Domain
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub '${ProjectName}-${Environment}-${AWS::AccountId}'
+      UserPoolId: !Ref UserPool
+
+  # ====================================
+  # Cognito Identity Pool
+  # ====================================
+  IdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: !Sub '${ProjectName}_identity_pool_${Environment}'
+      AllowUnauthenticatedIdentities: false
+      CognitoIdentityProviders:
+        - ClientId: !Ref UserPoolClient
+          ProviderName: !GetAtt UserPool.ProviderName
+
+  # IAM Role for Authenticated Users
+  CognitoAuthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-CognitoAuthRole-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref IdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: authenticated
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      Policies:
+        - PolicyName: CognitoAuthenticatedPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-identity:GetId
+                  - cognito-identity:GetCredentialsForIdentity
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::riftsage-reports-${Environment}-${AWS::AccountId}/*'
+
+  # Attach roles to Identity Pool
+  IdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref IdentityPool
+      Roles:
+        authenticated: !GetAtt CognitoAuthenticatedRole.Arn
+
+  # ====================================
+  # CloudWatch Log Group
+  # ====================================
+  WebAppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/webapp/${ProjectName}/${Environment}'
+      RetentionInDays: 30
+
+Outputs:
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  ClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-ClientId'
+
+  IdentityPoolId:
+    Description: Cognito Identity Pool ID
+    Value: !Ref IdentityPool
+    Export:
+      Name: !Sub '${AWS::StackName}-IdentityPoolId'
+
+  UserPoolDomain:
+    Description: Cognito User Pool Domain
+    Value: !Sub '${ProjectName}-${Environment}-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com'
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolDomain'
+
+  WebAppURL:
+    Description: Web App URL
+    Value: !Sub 'http://${WebAppBucket}.s3-website-${AWS::Region}.amazonaws.com'
+    Export:
+      Name: !Sub '${AWS::StackName}-WebAppURL'
+
+  AuthenticatedRoleArn:
+    Description: IAM Role ARN for Authenticated Users
+    Value: !GetAtt CognitoAuthenticatedRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AuthenticatedRoleArn'
