@@ -83,7 +83,7 @@ Resources:
               - TransitionInDays: 90
                 StorageClass: INTELLIGENT_TIERING
               - TransitionInDays: 365
-                StorageClass: GLACIER_INSTANT_RETRIEVAL
+                StorageClass: GLACIER_IR
           - Id: DeleteOldVersions
             Status: Enabled
             NoncurrentVersionExpirationInDays: 30
