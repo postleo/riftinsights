@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Summoner's Chronicle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/main.css">
+</head>
+<body class="auth-page">
+    <!-- Background -->
+    <div class="background-overlay"></div>
+
+    <!-- Auth Container -->
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Logo -->
+            <div class="auth-header">
+                <div class="logo-emblem">
+                    <i class="fas fa-scroll"></i>
+                </div>
+                <h1>Summoner's Chronicle</h1>
+                <p>Sign in to access your personalized insights</p>
+            </div>
+
+            <!-- Auth Methods Tabs -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="email">
+                    <i class="fas fa-envelope"></i>
+                    <span>Email</span>
+                </button>
+                <button class="auth-tab" data-tab="accesskey">
+                    <i class="fas fa-key"></i>
+                    <span>Access Key</span>
+                </button>
+            </div>
+
+            <!-- Email Auth Form -->
+            <div class="auth-form-container active" id="email-form">
+                <form class="auth-form" id="emailAuthForm">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-envelope"></i>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                placeholder="your.email@example.com"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Send Magic Link</span>
+                    </button>
+
+                    <div class="auth-info">
+                        <i class="fas fa-info-circle"></i>
+                        <p>We'll send you a secure magic link valid for 15 minutes</p>
+                    </div>
+                </form>
+
+                <!-- Success Message -->
+                <div class="auth-success" id="emailSuccess" style="display: none;">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>Check Your Email!</h3>
+                    <p>We've sent a magic link to <strong id="sentEmail"></strong></p>
+                    <p class="text-muted">Link expires in 15 minutes</p>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        Send Another Link
+                    </button>
+                </div>
+            </div>
+
+            <!-- Access Key Form -->
+            <div class="auth-form-container" id="accesskey-form">
+                <form class="auth-form" id="accessKeyForm">
+                    <div class="form-group">
+                        <label for="accessKeyFile">Upload Access Key (.sumvault)</label>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drop your .sumvault file here or click to browse</p>
+                            <input
+                                type="file"
+                                id="accessKeyFile"
+                                name="accessKeyFile"
+                                accept=".sumvault"
+                                required
+                            >
+                        </div>
+                        <div class="file-name" id="fileName" style="display: none;"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Sign In with Access Key</span>
+                    </button>
+
+                    <div class="auth-info">
+                        <i class="fas fa-info-circle"></i>
+                        <p>Use the .sumvault file you received when you first signed up</p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Loading State -->
+            <div class="auth-loading" id="authLoading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Authenticating...</p>
+            </div>
+
+            <!-- Error Message -->
+            <div class="auth-error" id="authError" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p id="errorMessage"></p>
+                <button class="btn btn-secondary" onclick="location.reload()">
+                    Try Again
+                </button>
+            </div>
+
+            <!-- Back to Home -->
+            <div class="auth-footer">
+                <a href="../index.html" class="link-back">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Home</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- New User Setup -->
+        <div class="setup-card" id="setupCard" style="display: none;">
+            <div class="setup-header">
+                <h2>Link Your Summoner</h2>
+                <p>Connect your League of Legends account to get started</p>
+            </div>
+
+            <form class="setup-form" id="setupForm">
+                <div class="form-group">
+                    <label for="summonerName">Summoner Name</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-user"></i>
+                        <input
+                            type="text"
+                            id="summonerName"
+                            name="summonerName"
+                            placeholder="Enter your summoner name"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="region">Region</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-globe"></i>
+                        <select id="region" name="region" required>
+                            <option value="">Select your region</option>
+                            <option value="na1">North America (NA)</option>
+                            <option value="euw1">Europe West (EUW)</option>
+                            <option value="eun1">Europe Nordic & East (EUNE)</option>
+                            <option value="kr">Korea (KR)</option>
+                            <option value="br1">Brazil (BR)</option>
+                            <option value="la1">Latin America North (LAN)</option>
+                            <option value="la2">Latin America South (LAS)</option>
+                            <option value="oc1">Oceania (OCE)</option>
+                            <option value="tr1">Turkey (TR)</option>
+                            <option value="ru">Russia (RU)</option>
+                            <option value="jp1">Japan (JP)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full">
+                    <i class="fas fa-link"></i>
+                    <span>Link Account</span>
+                </button>
+            </form>
+
+            <div class="setup-info">
+                <i class="fas fa-shield-alt"></i>
+                <p>Your data is securely stored and never shared with third parties</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../config/aws-config.js"></script>
+    <script src="../assets/js/auth.js"></script>
+</body>
+</html>

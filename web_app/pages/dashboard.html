@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Chronicle - Summoner's Chronicle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/main.css">
+</head>
+<body class="dashboard-page">
+    <!-- Background -->
+    <div class="background-overlay"></div>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <div class="logo-small">
+                    <i class="fas fa-scroll"></i>
+                    <span>Summoner's Chronicle</span>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="summonerName">Loading...</span>
+                    <span class="rank-badge" id="currentRank">Loading...</span>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="downloadBtn" title="Download Report">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="icon-btn" id="shareBtn" title="Share">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="icon-btn" id="settingsBtn" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="icon-btn" id="logoutBtn" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Pills -->
+        <nav class="nav-pills-container">
+            <div class="nav-pills">
+                <button class="nav-pill active" data-section="overview">
+                    <i class="fas fa-home"></i>
+                    <span>Overview</span>
+                </button>
+                <button class="nav-pill" data-section="performance">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Performance</span>
+                </button>
+                <button class="nav-pill" data-section="champions">
+                    <i class="fas fa-chess-knight"></i>
+                    <span>Champions</span>
+                </button>
+                <button class="nav-pill" data-section="team-impact">
+                    <i class="fas fa-users"></i>
+                    <span>Team Impact</span>
+                </button>
+                <button class="nav-pill" data-section="growth">
+                    <i class="fas fa-seedling"></i>
+                    <span>Growth</span>
+                </button>
+                <button class="nav-pill" data-section="achievements">
+                    <i class="fas fa-trophy"></i>
+                    <span>Achievements</span>
+                </button>
+                <button class="nav-pill" data-section="future-goals">
+                    <i class="fas fa-bullseye"></i>
+                    <span>Future Goals</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Content Wrapper -->
+        <div class="content-wrapper">
+            <!-- Overview Section -->
+            <section id="overview" class="content-section active">
+                <div class="section-header">
+                    <h2 class="section-subtitle">Season 2025</h2>
+                    <h1 class="section-title">Your Chronicle Overview</h1>
+                    <p class="section-description">A comprehensive look at your League of Legends journey this season</p>
+                </div>
+
+                <!-- Stats & Metrics -->
+                <div class="stats-section">
+                    <h3 class="stats-label">Key Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card highlight">
+                            <div class="stat-icon"><i class="fas fa-gamepad"></i></div>
+                            <div class="stat-value" id="totalGames">-</div>
+                            <div class="stat-label">Total Games</div>
+                            <div class="stat-insight">Your dedication this season</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-trophy"></i></div>
+                            <div class="stat-value" id="winRate">-%</div>
+                            <div class="stat-label">Win Rate</div>
+                            <div class="stat-insight">Consistent improvement</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-chart-bar"></i></div>
+                            <div class="stat-value" id="avgKDA">-</div>
+                            <div class="stat-label">Average KDA</div>
+                            <div class="stat-insight">Impact per game</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-star"></i></div>
+                            <div class="stat-value" id="mainRole">-</div>
+                            <div class="stat-label">Main Role</div>
+                            <div class="stat-insight">Your strongest position</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deeper Insights -->
+                <div class="insights-section">
+                    <h3 class="insights-label">Deeper Insights</h3>
+                    <div class="insights-content">
+                        <ul class="insights-list" id="overviewInsights">
+                            <li><i class="fas fa-circle"></i> <span>Loading insights...</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Narrative Meaning -->
+                <div class="narrative-section">
+                    <h3 class="narrative-label">What This Means</h3>
+                    <div class="narrative-content">
+                        <p id="overviewNarrative">Loading your personalized narrative...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Section -->
+            <section id="performance" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-subtitle">Deep Dive</h2>
+                    <h1 class="section-title">Performance Analysis</h1>
+                    <p class="section-description">Understanding your gameplay patterns and strengths</p>
+                </div>
+
+                <!-- Stats & Metrics -->
+                <div class="stats-section">
+                    <h3 class="stats-label">Performance Metrics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-crosshairs"></i></div>
+                            <div class="stat-value" id="avgKills">-</div>
+                            <div class="stat-label">Avg Kills</div>
+                            <div class="stat-insight">Aggressive playstyle</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-hands-helping"></i></div>
+                            <div class="stat-value" id="avgAssists">-</div>
+                            <div class="stat-label">Avg Assists</div>
+                            <div class="stat-insight">Team contribution</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-heart"></i></div>
+                            <div class="stat-value" id="avgDeaths">-</div>
+                            <div class="stat-label">Avg Deaths</div>
+                            <div class="stat-insight">Survival rate</div>
+                        </div>
+
+                        <div class="stat-card highlight">
+                            <div class="stat-icon"><i class="fas fa-coins"></i></div>
+                            <div class="stat-value" id="avgCS">-</div>
+                            <div class="stat-label">CS per Minute</div>
+                            <div class="stat-insight">Farming efficiency</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-eye"></i></div>
+                            <div class="stat-value" id="avgVision">-</div>
+                            <div class="stat-label">Vision Score</div>
+                            <div class="stat-insight">Map awareness</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-fire"></i></div>
+                            <div class="stat-value" id="avgDamage">-</div>
+                            <div class="stat-label">Damage per Min</div>
+                            <div class="stat-insight">Combat impact</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deeper Insights -->
+                <div class="insights-section">
+                    <h3 class="insights-label">Pattern Analysis</h3>
+                    <div class="insights-content">
+                        <ul class="insights-list" id="performanceInsights">
+                            <li><i class="fas fa-circle"></i> <span>Loading insights...</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Narrative Meaning -->
+                <div class="narrative-section">
+                    <h3 class="narrative-label">Performance Summary</h3>
+                    <div class="narrative-content">
+                        <p id="performanceNarrative">Loading your performance analysis...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Champions Section -->
+            <section id="champions" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-subtitle">Champion Pool</h2>
+                    <h1 class="section-title">Your Champions</h1>
+                    <p class="section-description">Mastery and performance with your most-played champions</p>
+                </div>
+
+                <!-- Champion Cards Grid -->
+                <div class="champions-grid" id="championsGrid">
+                    <!-- Champions will be loaded dynamically -->
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading your champions...</p>
+                    </div>
+                </div>
+
+                <!-- Deeper Insights -->
+                <div class="insights-section">
+                    <h3 class="insights-label">Champion Insights</h3>
+                    <div class="insights-content">
+                        <ul class="insights-list" id="championsInsights">
+                            <li><i class="fas fa-circle"></i> <span>Loading insights...</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Narrative Meaning -->
+                <div class="narrative-section">
+                    <h3 class="narrative-label">Your Champion Journey</h3>
+                    <div class="narrative-content">
+                        <p id="championsNarrative">Loading your champion analysis...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Team Impact Section -->
+            <section id="team-impact" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-subtitle">Teamplay</h2>
+                    <h1 class="section-title">Team Impact</h1>
+                    <p class="section-description">How you contribute to team success and coordinate with others</p>
+                </div>
+
+                <!-- Stats & Metrics -->
+                <div class="stats-section">
+                    <h3 class="stats-label">Team Contribution</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-bullseye"></i></div>
+                            <div class="stat-value" id="killParticipation">-%</div>
+                            <div class="stat-label">Kill Participation</div>
+                            <div class="stat-insight">Involvement in fights</div>
+                        </div>
+
+                        <div class="stat-card highlight">
+                            <div class="stat-icon"><i class="fas fa-shield-alt"></i></div>
+                            <div class="stat-value" id="objectiveControl">-%</div>
+                            <div class="stat-label">Objective Control</div>
+                            <div class="stat-insight">Strategic priorities</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-user-friends"></i></div>
+                            <div class="stat-value" id="teamfightPresence">-%</div>
+                            <div class="stat-label">Teamfight Presence</div>
+                            <div class="stat-insight">Combat reliability</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-hand-holding-heart"></i></div>
+                            <div class="stat-value" id="supportRating">-</div>
+                            <div class="stat-label">Support Rating</div>
+                            <div class="stat-insight">Enabling teammates</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deeper Insights -->
+                <div class="insights-section">
+                    <h3 class="insights-label">Team Dynamics</h3>
+                    <div class="insights-content">
+                        <ul class="insights-list" id="teamInsights">
+                            <li><i class="fas fa-circle"></i> <span>Loading insights...</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Narrative Meaning -->
+                <div class="narrative-section">
+                    <h3 class="narrative-label">Your Team Role</h3>
+                    <div class="narrative-content">
+                        <p id="teamNarrative">Loading your team impact analysis...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Growth Section -->
+            <section id="growth" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-subtitle">Progression</h2>
+                    <h1 class="section-title">Growth & Development</h1>
+                    <p class="section-description">Tracking your improvement and skill development over time</p>
+                </div>
+
+                <!-- Timeline Chart -->
+                <div class="growth-timeline" id="growthTimeline">
+                    <!-- Timeline will be rendered here -->
+                </div>
+
+                <!-- Growth Metrics -->
+                <div class="stats-section">
+                    <h3 class="stats-label">Growth Metrics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card highlight">
+                            <div class="stat-icon"><i class="fas fa-arrow-up"></i></div>
+                            <div class="stat-value" id="kdaImprovement">+-%</div>
+                            <div class="stat-label">KDA Improvement</div>
+                            <div class="stat-insight">Since last quarter</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-medal"></i></div>
+                            <div class="stat-value" id="rankProgress">-</div>
+                            <div class="stat-label">Rank Progress</div>
+                            <div class="stat-insight">Divisions climbed</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-book"></i></div>
+                            <div class="stat-value" id="championPoolGrowth">+</div>
+                            <div class="stat-label">New Champions</div>
+                            <div class="stat-insight">Pool expansion</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-brain"></i></div>
+                            <div class="stat-value" id="consistencyScore">-%</div>
+                            <div class="stat-label">Consistency</div>
+                            <div class="stat-insight">Performance stability</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deeper Insights -->
+                <div class="insights-section">
+                    <h3 class="insights-label">Development Areas</h3>
+                    <div class="insights-content">
+                        <ul class="insights-list" id="growthInsights">
+                            <li><i class="fas fa-circle"></i> <span>Loading insights...</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Narrative Meaning -->
+                <div class="narrative-section">
+                    <h3 class="narrative-label">Your Growth Story</h3>
+                    <div class="narrative-content">
+                        <p id="growthNarrative">Loading your growth analysis...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Achievements Section -->
+            <section id="achievements" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-subtitle">Milestones</h2>
+                    <h1 class="section-title">Achievements</h1>
+                    <p class="section-description">Celebrating your best moments and accomplishments</p>
+                </div>
+
+                <!-- Achievement Badges Grid -->
+                <div class="achievements-grid" id="achievementsGrid">
+                    <!-- Achievements will be loaded dynamically -->
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading achievements...</p>
+                    </div>
+                </div>
+
+                <!-- Outstanding Games -->
+                <div class="outstanding-games-section">
+                    <h3 class="stats-label">Outstanding Performances</h3>
+                    <div class="games-grid" id="outstandingGames">
+                        <!-- Top games will be loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Narrative Meaning -->
+                <div class="narrative-section">
+                    <h3 class="narrative-label">What You've Accomplished</h3>
+                    <div class="narrative-content">
+                        <p id="achievementsNarrative">Loading your achievements...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Future Goals Section -->
+            <section id="future-goals" class="content-section">
+                <div class="section-header">
+                    <h2 class="section-subtitle">Blueprint for Improvement</h2>
+                    <h1 class="section-title">Your Path Forward</h1>
+                    <p class="section-description">Personalized recommendations and trackable goals</p>
+                </div>
+
+                <!-- Goal Categories -->
+                <div class="goals-container" id="goalsContainer">
+                    <!-- Mechanical Skills -->
+                    <div class="goal-category">
+                        <div class="category-header">
+                            <div class="category-icon"><i class="fas fa-hand-sparkles"></i></div>
+                            <div class="category-info">
+                                <h3>Mechanical Skills</h3>
+                                <p>Improve your execution and mechanics</p>
+                            </div>
+                            <div class="category-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="mechanicsProgress" style="width: 0%"></div>
+                                </div>
+                                <span class="progress-text">0%</span>
+                            </div>
+                        </div>
+                        <div class="goals-list" id="mechanicalGoals">
+                            <!-- Goals will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Strategic Knowledge -->
+                    <div class="goal-category">
+                        <div class="category-header">
+                            <div class="category-icon"><i class="fas fa-chess"></i></div>
+                            <div class="category-info">
+                                <h3>Strategic Knowledge</h3>
+                                <p>Enhance your game sense and decision-making</p>
+                            </div>
+                            <div class="category-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="strategyProgress" style="width: 0%"></div>
+                                </div>
+                                <span class="progress-text">0%</span>
+                            </div>
+                        </div>
+                        <div class="goals-list" id="strategyGoals">
+                            <!-- Goals will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Champion Mastery -->
+                    <div class="goal-category">
+                        <div class="category-header">
+                            <div class="category-icon"><i class="fas fa-star"></i></div>
+                            <div class="category-info">
+                                <h3>Champion Mastery</h3>
+                                <p>Expand and deepen your champion pool</p>
+                            </div>
+                            <div class="category-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="championProgress" style="width: 0%"></div>
+                                </div>
+                                <span class="progress-text">0%</span>
+                            </div>
+                        </div>
+                        <div class="goals-list" id="championGoals">
+                            <!-- Goals will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Mental Game -->
+                    <div class="goal-category">
+                        <div class="category-header">
+                            <div class="category-icon"><i class="fas fa-brain"></i></div>
+                            <div class="category-info">
+                                <h3>Mental Game</h3>
+                                <p>Build consistency and mental resilience</p>
+                            </div>
+                            <div class="category-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="mentalProgress" style="width: 0%"></div>
+                                </div>
+                                <span class="progress-text">0%</span>
+                            </div>
+                        </div>
+                        <div class="goals-list" id="mentalGoals">
+                            <!-- Goals will be loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Team Coordination -->
+                    <div class="goal-category">
+                        <div class="category-header">
+                            <div class="category-icon"><i class="fas fa-users"></i></div>
+                            <div class="category-info">
+                                <h3>Team Coordination</h3>
+                                <p>Strengthen communication and teamplay</p>
+                            </div>
+                            <div class="category-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="teamProgress" style="width: 0%"></div>
+                                </div>
+                                <span class="progress-text">0%</span>
+                            </div>
+                        </div>
+                        <div class="goals-list" id="teamGoals">
+                            <!-- Goals will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Narrative Meaning -->
+                <div class="narrative-section">
+                    <h3 class="narrative-label">Your Improvement Path</h3>
+                    <div class="narrative-content">
+                        <p id="goalsNarrative">These personalized goals are designed to help you improve based on your unique playstyle and current skill level. Focus on one category at a time for the best results.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="dashboard-footer">
+            <p>&copy; 2025 Summoner's Chronicle • Powered by RiftSage AI</p>
+        </footer>
+    </div>
+
+    <script src="../config/aws-config.js"></script>
+    <script src="../assets/js/dashboard.js"></script>
+</body>
+</html>
