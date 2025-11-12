@@ -7,7 +7,8 @@ Populates the ChampionRecommendationsTable with champion data
 import json
 import boto3
 import argparse
-from typing import Dict, List
+from decimal import Decimal
+from typing import Dict, List, Any
 
 # Sample champion data
 CHAMPION_DATA = [
@@ -129,6 +130,21 @@ CHAMPION_DATA = [
 ]
 
 
+def convert_floats_to_decimal(obj: Any) -> Any:
+    """
+    Recursively convert all float values to Decimal for DynamoDB compatibility.
+    DynamoDB does not support Python float types - must use Decimal.
+    """
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {key: convert_floats_to_decimal(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_floats_to_decimal(item) for item in obj]
+    else:
+        return obj
+
+
 def seed_champion_database(environment: str, region: str):
     """Seed the champion recommendations table"""
 
@@ -147,7 +163,9 @@ def seed_champion_database(environment: str, region: str):
 
     for champion in CHAMPION_DATA:
         try:
-            table.put_item(Item=champion)
+            # Convert all floats to Decimal for DynamoDB compatibility
+            champion_data = convert_floats_to_decimal(champion)
+            table.put_item(Item=champion_data)
             print(f"✓ Added {champion['champion_name']} ({champion['role']})")
             success_count += 1
         except Exception as e:
